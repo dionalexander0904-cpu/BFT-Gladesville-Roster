@@ -46,6 +46,9 @@ h1 { font: 700 44px/0.95 var(--font-display); text-transform: uppercase; letter-
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; align-self: flex-start; }
 .seg button { border: 0; background: transparent; padding: 6px 18px; border-radius: 6px; font-weight: 600; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.toprow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.timeoff { border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font-weight: 600; padding: 8px 16px; border-radius: 8px; }
+.timeoff:hover { background: var(--accent); color: var(--accent-ink); }
 .who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .who .lbl { font: 600 13px/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 14px; font-weight: 500; font-size: 15px; }
@@ -109,9 +112,12 @@ body { margin: 0; }
   </header>
 
   <div class="controls">
-    <div class="seg" role="group" aria-label="View">
-      <button id="vDay" type="button" aria-pressed="true">Day</button>
-      <button id="vWeek" type="button" aria-pressed="false">Week</button>
+    <div class="toprow">
+      <div class="seg" role="group" aria-label="View">
+        <button id="vDay" type="button" aria-pressed="true">Day</button>
+        <button id="vWeek" type="button" aria-pressed="false">Week</button>
+      </div>
+      <a class="timeoff" href="https://forms.gle/xaioJki6zGUf4Mwo8" target="_blank" rel="noopener">Request time off</a>
     </div>
     <div class="who" id="who" role="group" aria-label="Filter by coach"></div>
   </div>
