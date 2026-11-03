@@ -276,16 +276,20 @@ body { margin: 0; }
   function renderDay(main) {
     var keys = dateKeys();
     var list = visible();
-    var idx = keys.indexOf(state.dayKey);
+    function step(n) { state.dayKey = keyOf(addDays(dateOf(state.dayKey), n)); render(); }
     var nav = h("div", "daynav");
     var prev = h("button", "nav", "‹"); prev.type = "button"; prev.setAttribute("aria-label", "Previous day");
     var next = h("button", "nav", "›"); next.type = "button"; next.setAttribute("aria-label", "Next day");
-    prev.disabled = idx <= 0; next.disabled = idx < 0 || idx >= keys.length - 1;
-    prev.addEventListener("click", function () { state.dayKey = keys[idx - 1]; render(); });
-    next.addEventListener("click", function () { state.dayKey = keys[idx + 1]; render(); });
+    prev.addEventListener("click", function () { step(-1); });
+    next.addEventListener("click", function () { step(1); });
     var title = h("div", "title");
     title.appendChild(h("h2", null, longDate(state.dayKey)));
     title.appendChild(h("p", null, relative(state.dayKey)));
+    if (state.dayKey !== keyOf(new Date())) {
+      var tb = h("button", "chip", "Back to today"); tb.type = "button"; tb.style.marginTop = "8px";
+      tb.addEventListener("click", function () { state.dayKey = keyOf(new Date()); render(); });
+      title.appendChild(tb);
+    }
     nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
     main.appendChild(nav);
 
@@ -334,6 +338,12 @@ body { margin: 0; }
     var title = h("div", "title");
     title.appendChild(h("h2", null, "Week of " + monday.getDate() + " " + MONTHS[monday.getMonth()]));
     title.appendChild(h("p", null, total ? total + (total === 1 ? " session" : " sessions") + " rostered" : "No sessions rostered"));
+    var now = new Date(), thisMonday = keyOf(addDays(now, -((now.getDay() + 6) % 7)));
+    if (keyOf(monday) !== thisMonday) {
+      var wb = h("button", "chip", "Back to this week"); wb.type = "button"; wb.style.marginTop = "8px";
+      wb.addEventListener("click", function () { state.dayKey = keyOf(new Date()); render(); });
+      title.appendChild(wb);
+    }
     nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
     main.appendChild(nav);
     main.appendChild(wrap);
@@ -367,11 +377,7 @@ body { margin: 0; }
   }
 
   function pickStartDay() {
-    var keys = dateKeys();
-    if (!keys.length) { state.dayKey = null; return; }
-    var today = keyOf(new Date());
-    var upcoming = keys.filter(function (k) { return k >= today; });
-    state.dayKey = upcoming.length ? upcoming[0] : keys[keys.length - 1];
+    state.dayKey = keyOf(new Date());
   }
 
   function load(text, source) {
@@ -380,7 +386,7 @@ body { margin: 0; }
     var firstLoad = !state.shifts.length;
     state.shifts = shifts;
     state.source = source;
-    if (firstLoad || dateKeys().indexOf(state.dayKey) < 0) pickStartDay();
+    if (firstLoad) pickStartDay();
     render();
     return true;
   }
