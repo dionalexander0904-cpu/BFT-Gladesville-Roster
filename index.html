@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<title>BFT Gladesville Roster</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: a time-board. Big condensed clock times on the left, session and coaches on the right, grouped by day. */
+:root {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #111312;
+  --ink: #FFFFFF;
+  --muted: #A6AEAA;
+  --line: #2B302D;
+  --accent: #00B5CC;
+  --accent-ink: #000000;
+  --accent-soft: #04303A;
+  --c1: #FF8A6B; --c2: #8FA8FF; --c3: #C79BFF; --c4: #FFC24D; --c5: #5EE08F;
+  --font-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.45 var(--font-body);
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.eyebrow { font: 600 13px/1 var(--font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+h1 { font: 700 44px/0.95 var(--font-display); text-transform: uppercase; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.status { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; min-width: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.status.live .dot { background: var(--accent); }
+
+.controls { display: flex; flex-direction: column; gap: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; align-self: flex-start; }
+.seg button { border: 0; background: transparent; padding: 6px 18px; border-radius: 6px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.who .lbl { font: 600 13px/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 14px; font-weight: 500; font-size: 15px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.daynav { display: flex; align-items: center; gap: 12px; }
+.daynav .title { flex: 1; min-width: 0; }
+.daynav h2 { font: 700 30px/1 var(--font-display); text-transform: uppercase; margin: 0; }
+.daynav p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.nav { width: 44px; height: 44px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; font-size: 20px; line-height: 1; flex: none; }
+.nav:disabled { opacity: .35; cursor: default; }
+
+.slots { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.slot { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--line); align-items: center; }
+.slot:first-child { border-top: 0; }
+.time { font: 600 32px/1 var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: .01em; white-space: nowrap; }
+.time small { font-size: 16px; margin-left: 3px; color: var(--muted); letter-spacing: .06em; }
+.what { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.session { font: 600 13px/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.coaches { display: flex; flex-wrap: wrap; gap: 8px; }
+.coach { display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px 3px 3px; border-radius: 999px; background: #1C201E; font-weight: 500; }
+.coach.me { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 var(--font-display); color: var(--cc); background: color-mix(in srgb, var(--cc) 18%, var(--surface)); }
+
+.week { display: flex; flex-direction: column; gap: 12px; }
+.day { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.day.today { border-color: var(--accent); }
+.dayhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.dayhead h3 { margin: 0; font: 700 22px/1 var(--font-display); text-transform: uppercase; }
+.dayhead span { font-size: 13px; color: var(--muted); }
+.day .slot { grid-template-columns: 80px 1fr; padding: 10px 16px; }
+.day .time { font-size: 24px; }
+.empty { padding: 14px 16px; color: var(--muted); font-size: 15px; }
+.msg { border: 1px dashed var(--line); border-radius: 10px; padding: 20px 16px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; background: var(--surface); }
+.msg p { margin: 0; }
+.btn { border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; padding: 9px 16px; border-radius: 8px; }
+.foot { font-size: 13px; color: var(--muted); margin: 0; }
+
+@media (max-width: 480px) {
+  h1 { font-size: 38px; }
+  .slot { grid-template-columns: 82px 1fr; padding: 12px; gap: 10px; }
+  .time { font-size: 28px; }
+  .daynav h2 { font-size: 26px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chip, .seg button { transition: background .15s, color .15s; }
+}
+html { background: #000000; }
+body { margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">BFT Gladesville</p>
+      <h1>Roster</h1>
+    </div>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Loading roster</span></div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="View">
+      <button id="vDay" type="button" aria-pressed="true">Day</button>
+      <button id="vWeek" type="button" aria-pressed="false">Week</button>
+    </div>
+    <div class="who" id="who" role="group" aria-label="Filter by coach"></div>
+  </div>
+
+  <main id="main"></main>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+(function () {
+  var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNGvWiV0-SQn_lHUraEI8F5k4BPJ1aLUvNHuclG2_pVcboN6wpUZOBV70kwXmPrlv6Yom6DO3ikJH4/pub?gid=523399734&single=true&output=csv";
+  var SNAPSHOT_LABEL = "4 Nov 2026";
+  var SNAPSHOT = [
+    "Date,Time,Session,Coach",
+    "16/11/2026,5:00 AM,Strength Endurance,Philip",
+    "16/11/2026,6:00 AM,Strength Endurance,Philip",
+    "16/11/2026,6:00 AM,Strength Endurance,Sandrine",
+    "16/11/2026,6:00 AM,Strength Endurance,Dion",
+    "16/11/2026,7:00 AM,Strength Endurance,Philip",
+    "16/11/2026,7:00 AM,Strength Endurance,Sandrine",
+    "16/11/2026,5:30 PM,Strength Endurance,Dion",
+    "16/11/2026,5:30 PM,Strength Endurance,Juan",
+    "16/11/2026,6:30 PM,Strength Endurance,Dion",
+    "16/11/2026,6:30 PM,Strength Endurance,Juan"
+  ].join("\n");
+
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var state = { shifts: [], who: "all", view: "day", dayKey: null, source: "snapshot", updated: null };
+
+  try { var saved = localStorage.getItem("bft-roster-who"); if (saved) state.who = saved; } catch (e) {}
+
+  function h(tag, cls, text) {
+    var el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text != null) el.textContent = text;
+    return el;
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function keyOf(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function dateOf(key) { var p = key.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); return x; }
+  function longDate(key) { var d = dateOf(key); return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
+
+  function parseCSV(text) {
+    var rows = [], row = [], cell = "", q = false, i, c;
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (q) {
+        if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (c === '"') q = false;
+        else cell += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(cell); cell = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell); cell = "";
+        if (row.some(function (v) { return v.trim(); })) rows.push(row);
+        row = [];
+      } else cell += c;
+    }
+    row.push(cell);
+    if (row.some(function (v) { return v.trim(); })) rows.push(row);
+    return rows;
+  }
+
+  function toShifts(text) {
+    var rows = parseCSV(text);
+    if (rows.length < 2) return [];
+    var head = rows[0].map(function (v) { return v.trim().toLowerCase(); });
+    var iD = head.indexOf("date"), iT = head.indexOf("time"), iS = head.indexOf("session"), iC = head.indexOf("coach");
+    if (iD < 0 || iT < 0 || iC < 0) return [];
+    var out = [];
+    rows.slice(1).forEach(function (r) {
+      var dm = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(r[iD] || "");
+      var tm = /(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(r[iT] || "");
+      var coach = (r[iC] || "").trim();
+      if (!dm || !tm || !coach) return;
+      var hr = +tm[1] % 12 + (tm[3].toUpperCase() === "PM" ? 12 : 0);
+      out.push({
+        key: dm[3] + "-" + pad(+dm[2]) + "-" + pad(+dm[1]),
+        mins: hr * 60 + +tm[2],
+        timeLabel: tm[1] + ":" + tm[2],
+        ampm: tm[3].toUpperCase(),
+        session: iS >= 0 ? (r[iS] || "").trim() : "",
+        coach: coach
+      });
+    });
+    return out;
+  }
+
+  function dateKeys() {
+    var seen = {}, list = [];
+    state.shifts.forEach(function (s) { if (!seen[s.key]) { seen[s.key] = 1; list.push(s.key); } });
+    return list.sort();
+  }
+  function visible() {
+    return state.who === "all" ? state.shifts : state.shifts.filter(function (s) { return s.coach === state.who; });
+  }
+  function slotsFor(key, list) {
+    var groups = {}, order = [];
+    list.forEach(function (s) {
+      if (s.key !== key) return;
+      var g = s.mins + "|" + s.session;
+      if (!groups[g]) { groups[g] = { mins: s.mins, timeLabel: s.timeLabel, ampm: s.ampm, session: s.session, coaches: [] }; order.push(g); }
+      if (groups[g].coaches.indexOf(s.coach) < 0) groups[g].coaches.push(s.coach);
+    });
+    return order.map(function (g) { return groups[g]; }).sort(function (a, b) { return a.mins - b.mins; });
+  }
+
+  var coachNames = [];
+  function coachColor(name) { return "var(--c" + (coachNames.indexOf(name) % 5 + 1) + ")"; }
+
+  function coachPill(name) {
+    var p = h("span", "coach" + (state.who === name ? " me" : ""));
+    var av = h("span", "av", name.charAt(0).toUpperCase());
+    av.style.setProperty("--cc", coachColor(name));
+    p.appendChild(av);
+    p.appendChild(document.createTextNode(name));
+    return p;
+  }
+  function slotRow(slot) {
+    var row = h("div", "slot");
+    var t = h("div", "time", slot.timeLabel);
+    t.appendChild(h("small", null, slot.ampm));
+    row.appendChild(t);
+    var w = h("div", "what");
+    if (slot.session) w.appendChild(h("div", "session", slot.session));
+    var cs = h("div", "coaches");
+    slot.coaches.forEach(function (n) { cs.appendChild(coachPill(n)); });
+    w.appendChild(cs);
+    row.appendChild(w);
+    return row;
+  }
+
+  function relative(key) {
+    var diff = Math.round((dateOf(key) - dateOf(keyOf(new Date()))) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Tomorrow";
+    if (diff === -1) return "Yesterday";
+    return diff > 0 ? "In " + diff + " days" : Math.abs(diff) + " days ago";
+  }
+
+  function renderWho() {
+    var box = document.getElementById("who");
+    box.textContent = "";
+    box.appendChild(h("span", "lbl", "My shifts"));
+    var names = ["all"].concat(coachNames);
+    names.forEach(function (n) {
+      var b = h("button", "chip", n === "all" ? "Everyone" : n);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(state.who === n));
+      b.addEventListener("click", function () {
+        state.who = n;
+        try { localStorage.setItem("bft-roster-who", n); } catch (e) {}
+        render();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderDay(main) {
+    var keys = dateKeys();
+    var list = visible();
+    var idx = keys.indexOf(state.dayKey);
+    var nav = h("div", "daynav");
+    var prev = h("button", "nav", "‹"); prev.type = "button"; prev.setAttribute("aria-label", "Previous day");
+    var next = h("button", "nav", "›"); next.type = "button"; next.setAttribute("aria-label", "Next day");
+    prev.disabled = idx <= 0; next.disabled = idx < 0 || idx >= keys.length - 1;
+    prev.addEventListener("click", function () { state.dayKey = keys[idx - 1]; render(); });
+    next.addEventListener("click", function () { state.dayKey = keys[idx + 1]; render(); });
+    var title = h("div", "title");
+    title.appendChild(h("h2", null, longDate(state.dayKey)));
+    title.appendChild(h("p", null, relative(state.dayKey)));
+    nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
+    main.appendChild(nav);
+
+    var slots = slotsFor(state.dayKey, list);
+    if (!slots.length) {
+      var later = keys.filter(function (k) { return k > state.dayKey && list.some(function (s) { return s.key === k; }); })[0];
+      var m = h("div", "msg");
+      m.appendChild(h("p", null, (state.who === "all" ? "Nothing is rostered" : state.who + " is not rostered") + " on this day."));
+      if (later) {
+        var b = h("button", "btn", "Go to " + longDate(later)); b.type = "button";
+        b.addEventListener("click", function () { state.dayKey = later; render(); });
+        m.appendChild(b);
+      }
+      main.appendChild(m);
+      return;
+    }
+    var box = h("div", "slots");
+    slots.forEach(function (s) { box.appendChild(slotRow(s)); });
+    main.appendChild(box);
+  }
+
+  function renderWeek(main) {
+    var d = dateOf(state.dayKey);
+    var monday = addDays(d, -((d.getDay() + 6) % 7));
+    var list = visible();
+    var wrap = h("div", "week");
+    var total = 0;
+    for (var i = 0; i < 7; i++) {
+      var day = addDays(monday, i), key = keyOf(day);
+      var slots = slotsFor(key, list);
+      total += slots.length;
+      var card = h("section", "day" + (key === keyOf(new Date()) ? " today" : ""));
+      var head = h("div", "dayhead");
+      head.appendChild(h("h3", null, DAYS[day.getDay()].slice(0, 3) + " " + day.getDate() + " " + MONTHS[day.getMonth()]));
+      head.appendChild(h("span", null, slots.length ? slots.length + (slots.length === 1 ? " session" : " sessions") : ""));
+      card.appendChild(head);
+      if (slots.length) slots.forEach(function (s) { card.appendChild(slotRow(s)); });
+      else card.appendChild(h("div", "empty", state.who === "all" ? "Nothing rostered yet." : state.who + " is not rostered."));
+      wrap.appendChild(card);
+    }
+    var nav = h("div", "daynav");
+    var prev = h("button", "nav", "‹"); prev.type = "button"; prev.setAttribute("aria-label", "Previous week");
+    var next = h("button", "nav", "›"); next.type = "button"; next.setAttribute("aria-label", "Next week");
+    prev.addEventListener("click", function () { state.dayKey = keyOf(addDays(monday, -7)); render(); });
+    next.addEventListener("click", function () { state.dayKey = keyOf(addDays(monday, 7)); render(); });
+    var title = h("div", "title");
+    title.appendChild(h("h2", null, "Week of " + monday.getDate() + " " + MONTHS[monday.getMonth()]));
+    title.appendChild(h("p", null, total ? total + (total === 1 ? " session" : " sessions") + " rostered" : "No sessions rostered"));
+    nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
+    main.appendChild(nav);
+    main.appendChild(wrap);
+  }
+
+  function render() {
+    coachNames = [];
+    state.shifts.forEach(function (s) { if (coachNames.indexOf(s.coach) < 0) coachNames.push(s.coach); });
+    coachNames.sort();
+    if (state.who !== "all" && coachNames.indexOf(state.who) < 0) state.who = "all";
+
+    document.getElementById("vDay").setAttribute("aria-pressed", String(state.view === "day"));
+    document.getElementById("vWeek").setAttribute("aria-pressed", String(state.view === "week"));
+    renderWho();
+
+    var main = document.getElementById("main");
+    main.textContent = "";
+    main.style.display = "flex"; main.style.flexDirection = "column"; main.style.gap = "16px";
+    if (!state.dayKey) { main.appendChild(h("div", "empty", "The roster is empty.")); }
+    else if (state.view === "day") renderDay(main);
+    else renderWeek(main);
+
+    var st = document.getElementById("status");
+    st.className = "status" + (state.source === "live" ? " live" : "");
+    document.getElementById("statusText").textContent = state.source === "live"
+      ? "Live from the roster sheet"
+      : "Sheet snapshot, " + SNAPSHOT_LABEL;
+    document.getElementById("foot").textContent = state.source === "live"
+      ? "Changes in the sheet appear here within a minute."
+      : "Example view using the sheet data as of " + SNAPSHOT_LABEL + ". The hosted version reads the sheet directly, so edits show up without republishing.";
+  }
+
+  function pickStartDay() {
+    var keys = dateKeys();
+    if (!keys.length) { state.dayKey = null; return; }
+    var today = keyOf(new Date());
+    var upcoming = keys.filter(function (k) { return k >= today; });
+    state.dayKey = upcoming.length ? upcoming[0] : keys[keys.length - 1];
+  }
+
+  function load(text, source) {
+    var shifts = toShifts(text);
+    if (!shifts.length) return false;
+    var firstLoad = !state.shifts.length;
+    state.shifts = shifts;
+    state.source = source;
+    if (firstLoad || dateKeys().indexOf(state.dayKey) < 0) pickStartDay();
+    render();
+    return true;
+  }
+
+  document.getElementById("vDay").addEventListener("click", function () { state.view = "day"; render(); });
+  document.getElementById("vWeek").addEventListener("click", function () { state.view = "week"; render(); });
+
+  load(SNAPSHOT, "snapshot");
+
+  function refresh() {
+    if (typeof fetch !== "function") return;
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+    fetch(CSV_URL, ctl ? { signal: ctl.signal, cache: "no-store" } : { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("bad status"); return r.text(); })
+      .then(function (t) { load(t, "live"); })
+      .catch(function () {})
+      .then(function () { clearTimeout(timer); });
+  }
+  refresh();
+  setInterval(refresh, 60000);
+})();
+</script>
+</body>
+</html>
