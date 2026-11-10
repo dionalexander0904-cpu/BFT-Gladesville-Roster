@@ -24,6 +24,7 @@
   --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink);
   font: 16px/1.45 var(--font-body);
@@ -87,6 +88,22 @@ h1 { font: 700 44px/0.95 var(--font-display); text-transform: uppercase; letter-
 .btn { border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; padding: 9px 16px; border-radius: 8px; }
 .foot { font-size: 13px; color: var(--muted); margin: 0; }
 
+.open { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.openpill { display: inline-flex; align-items: center; padding: 4px 14px; border-radius: 999px; border: 1.5px dashed var(--accent); color: var(--accent); font-weight: 600; font-size: 15px; }
+.claim { border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; padding: 6px 14px; border-radius: 8px; font-size: 15px; }
+.claim:disabled { background: var(--line); color: var(--muted); cursor: default; }
+.chip.openchip { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.chip.openchip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.72); display: grid; place-items: center; padding: 16px; }
+.mcard { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.mcard h3 { margin: 0; font: 700 26px/1 var(--font-display); text-transform: uppercase; }
+.mcard p { margin: 0; }
+.mdetail { font-weight: 600; }
+.mmsg { color: var(--muted); font-size: 14px; }
+.mcard label { font: 600 13px/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.mcard select { width: 100%; font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.mbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 @media (max-width: 480px) {
   h1 { font-size: 38px; }
   .slot { grid-template-columns: 82px 1fr; padding: 12px; gap: 10px; }
@@ -125,10 +142,13 @@ body { margin: 0; }
   <main id="main"></main>
   <p class="foot" id="foot"></p>
 </div>
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-label="Claim a shift"></div>
 
 <script>
 (function () {
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNGvWiV0-SQn_lHUraEI8F5k4BPJ1aLUvNHuclG2_pVcboN6wpUZOBV70kwXmPrlv6Yom6DO3ikJH4/pub?gid=523399734&single=true&output=csv";
+  // Paste the Apps Script web app URL here to switch on the Claim button. Leave empty to hide it.
+  var CLAIM_URL = "";
   var SNAPSHOT_LABEL = "4 Nov 2026";
   var SNAPSHOT = [
     "Date,Time,Session,Coach",
@@ -203,7 +223,8 @@ body { margin: 0; }
         timeLabel: tm[1] + ":" + tm[2],
         ampm: tm[3].toUpperCase(),
         session: iS >= 0 ? (r[iS] || "").trim() : "",
-        coach: coach
+        coach: coach,
+        open: coach.toUpperCase() === "OPEN"
       });
     });
     return out;
@@ -215,15 +236,18 @@ body { margin: 0; }
     return list.sort();
   }
   function visible() {
-    return state.who === "all" ? state.shifts : state.shifts.filter(function (s) { return s.coach === state.who; });
+    if (state.who === "all") return state.shifts;
+    if (state.who === "open") return state.shifts.filter(function (s) { return s.open; });
+    return state.shifts.filter(function (s) { return !s.open && s.coach === state.who; });
   }
   function slotsFor(key, list) {
     var groups = {}, order = [];
     list.forEach(function (s) {
       if (s.key !== key) return;
       var g = s.mins + "|" + s.session;
-      if (!groups[g]) { groups[g] = { mins: s.mins, timeLabel: s.timeLabel, ampm: s.ampm, session: s.session, coaches: [] }; order.push(g); }
-      if (groups[g].coaches.indexOf(s.coach) < 0) groups[g].coaches.push(s.coach);
+      if (!groups[g]) { groups[g] = { mins: s.mins, timeLabel: s.timeLabel, ampm: s.ampm, session: s.session, coaches: [], open: 0, key: key }; order.push(g); }
+      if (s.open) groups[g].open++;
+      else if (groups[g].coaches.indexOf(s.coach) < 0) groups[g].coaches.push(s.coach);
     });
     return order.map(function (g) { return groups[g]; }).sort(function (a, b) { return a.mins - b.mins; });
   }
@@ -248,10 +272,78 @@ body { margin: 0; }
     if (slot.session) w.appendChild(h("div", "session", slot.session));
     var cs = h("div", "coaches");
     slot.coaches.forEach(function (n) { cs.appendChild(coachPill(n)); });
+    for (var o = 0; o < slot.open; o++) {
+      var op = h("span", "open");
+      op.appendChild(h("span", "openpill", "Open shift"));
+      if (CLAIM_URL) {
+        var done = wasRequested(slot);
+        var cb = h("button", "claim", done ? "Requested" : "Claim"); cb.type = "button"; cb.disabled = done;
+        cb.addEventListener("click", function () { showClaim(slot); });
+        op.appendChild(cb);
+      }
+      cs.appendChild(op);
+    }
     w.appendChild(cs);
     row.appendChild(w);
     return row;
   }
+
+  function openUpcoming() {
+    var today = keyOf(new Date());
+    return state.shifts.filter(function (s) { return s.open && s.key >= today; }).length;
+  }
+  function slotId(slot) { return slot.key + "|" + slot.mins + "|" + slot.session; }
+  function wasRequested(slot) {
+    try { return (JSON.parse(localStorage.getItem("bft-roster-claims") || "[]")).indexOf(slotId(slot)) >= 0; } catch (e) { return false; }
+  }
+  function markRequested(slot) {
+    try {
+      var list = JSON.parse(localStorage.getItem("bft-roster-claims") || "[]");
+      list.push(slotId(slot));
+      localStorage.setItem("bft-roster-claims", JSON.stringify(list.slice(-60)));
+    } catch (e) {}
+  }
+  function closeModal() { document.getElementById("modal").hidden = true; }
+  function showClaim(slot) {
+    var m = document.getElementById("modal");
+    m.textContent = "";
+    var card = h("div", "mcard");
+    card.appendChild(h("h3", null, "Claim this shift"));
+    card.appendChild(h("p", "mdetail", longDate(slot.key) + ", " + slot.timeLabel + " " + slot.ampm + (slot.session ? " · " + slot.session : "")));
+    var lab = h("label", null, "Your name"); lab.setAttribute("for", "claimName");
+    var sel = h("select"); sel.id = "claimName";
+    var ph = h("option", null, "Choose your name"); ph.value = ""; sel.appendChild(ph);
+    coachNames.forEach(function (n) { var o = h("option", null, n); o.value = n; sel.appendChild(o); });
+    try { var sv = localStorage.getItem("bft-roster-name"); if (sv && coachNames.indexOf(sv) >= 0) sel.value = sv; } catch (e) {}
+    var msg = h("p", "mmsg", "Your manager approves claims before the roster changes.");
+    var btns = h("div", "mbtns");
+    var send = h("button", "btn", "Send request"); send.type = "button";
+    var cancel = h("button", "btn ghost", "Cancel"); cancel.type = "button";
+    cancel.addEventListener("click", closeModal);
+    send.addEventListener("click", function () {
+      if (!sel.value) { msg.textContent = "Choose your name first."; return; }
+      try { localStorage.setItem("bft-roster-name", sel.value); } catch (e) {}
+      send.disabled = true; msg.textContent = "Sending";
+      var payload = { name: sel.value, date: slot.key.split("-").reverse().join("/"), time: slot.timeLabel + " " + slot.ampm, session: slot.session };
+      fetch(CLAIM_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) })
+        .then(function () {
+          markRequested(slot);
+          msg.textContent = "Request sent. Your manager will confirm it with you.";
+          sel.disabled = true; btns.textContent = "";
+          var close = h("button", "btn", "Done"); close.type = "button";
+          close.addEventListener("click", function () { closeModal(); render(); });
+          btns.appendChild(close);
+        })
+        .catch(function () { send.disabled = false; msg.textContent = "Could not send. Check your connection and try again."; });
+    });
+    btns.appendChild(send); btns.appendChild(cancel);
+    card.appendChild(lab); card.appendChild(sel); card.appendChild(msg); card.appendChild(btns);
+    m.appendChild(card);
+    m.hidden = false;
+    sel.focus();
+  }
+  document.getElementById("modal").addEventListener("click", function (e) { if (e.target === this) closeModal(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeModal(); });
 
   function relative(key) {
     var diff = Math.round((dateOf(key) - dateOf(keyOf(new Date()))) / 86400000);
@@ -265,9 +357,10 @@ body { margin: 0; }
     var box = document.getElementById("who");
     box.textContent = "";
     box.appendChild(h("span", "lbl", "My shifts"));
-    var names = ["all"].concat(coachNames);
+    var openCount = openUpcoming();
+    var names = ["all"].concat(openCount ? ["open"] : [], coachNames);
     names.forEach(function (n) {
-      var b = h("button", "chip", n === "all" ? "Everyone" : n);
+      var b = h("button", "chip" + (n === "open" ? " openchip" : ""), n === "all" ? "Everyone" : n === "open" ? "Open shifts (" + openCount + ")" : n);
       b.type = "button";
       b.setAttribute("aria-pressed", String(state.who === n));
       b.addEventListener("click", function () {
@@ -303,7 +396,7 @@ body { margin: 0; }
     if (!slots.length) {
       var later = keys.filter(function (k) { return k > state.dayKey && list.some(function (s) { return s.key === k; }); })[0];
       var m = h("div", "msg");
-      m.appendChild(h("p", null, (state.who === "all" ? "Nothing is rostered" : state.who + " is not rostered") + " on this day."));
+      m.appendChild(h("p", null, (state.who === "all" ? "Nothing is rostered" : state.who === "open" ? "No open shifts" : state.who + " is not rostered") + " on this day."));
       if (later) {
         var b = h("button", "btn", "Go to " + longDate(later)); b.type = "button";
         b.addEventListener("click", function () { state.dayKey = later; render(); });
@@ -333,7 +426,7 @@ body { margin: 0; }
       head.appendChild(h("span", null, slots.length ? slots.length + (slots.length === 1 ? " session" : " sessions") : ""));
       card.appendChild(head);
       if (slots.length) slots.forEach(function (s) { card.appendChild(slotRow(s)); });
-      else card.appendChild(h("div", "empty", state.who === "all" ? "Nothing rostered yet." : state.who + " is not rostered."));
+      else card.appendChild(h("div", "empty", state.who === "all" ? "Nothing rostered yet." : state.who === "open" ? "No open shifts." : state.who + " is not rostered."));
       wrap.appendChild(card);
     }
     var nav = h("div", "daynav");
@@ -357,9 +450,10 @@ body { margin: 0; }
 
   function render() {
     coachNames = [];
-    state.shifts.forEach(function (s) { if (coachNames.indexOf(s.coach) < 0) coachNames.push(s.coach); });
+    state.shifts.forEach(function (s) { if (!s.open && coachNames.indexOf(s.coach) < 0) coachNames.push(s.coach); });
     coachNames.sort();
-    if (state.who !== "all" && coachNames.indexOf(state.who) < 0) state.who = "all";
+    if (state.who === "open" && !openUpcoming()) state.who = "all";
+    if (state.who !== "all" && state.who !== "open" && coachNames.indexOf(state.who) < 0) state.who = "all";
 
     document.getElementById("vDay").setAttribute("aria-pressed", String(state.view === "day"));
     document.getElementById("vWeek").setAttribute("aria-pressed", String(state.view === "week"));
